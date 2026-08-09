@@ -1,0 +1,33 @@
+name: dummy
+version: 1
+description: Minimal schema fixture for exercising the loader and validator
+
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    template: proposal.md
+  - id: specs
+    generates: "specs/**/*.md"
+    template: spec.md
+  - id: design
+    generates: design.md
+    template: design.md
+  - id: tasks
+    generates: tasks.md
+    template: tasks.md
+
+propose:
+  artifacts: [proposal]
+  requires: []
+
+assess:
+  artifacts: [specs]
+  requires: [proposal]
+
+design:
+  artifacts: [design]
+  requires: [specs]
+
+implement:
+  artifacts: [tasks]
+  requires: [design]
