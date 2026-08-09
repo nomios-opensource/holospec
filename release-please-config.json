@@ -1,0 +1,23 @@
+{
+    "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+    "release-type": "python",
+    "changelog-path": "CHANGELOG.md",
+    "bump-minor-pre-major": true,
+    "bump-patch-for-minor-pre-major": false,
+    "draft": false,
+    "prerelease": false,
+    "packages": {
+        ".": {}
+    },
+    "extra-files": [
+        {
+            "path": "uv.lock",
+            "type": "toml",
+            "jsonpath": "$.package[?(@.name.value=='holospec')].version"
+        },
+        {
+            "path": "holospec.py",
+            "type": "generic"
+        }
+    ]
+}
