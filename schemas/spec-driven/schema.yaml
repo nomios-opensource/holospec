@@ -1,0 +1,349 @@
+name: spec-driven
+version: 1
+description: Holospec implementation of the Openspec default schema
+
+constitution: |
+  Cross-cutting conventions for this workflow, regardless of which action
+  you're working:
+
+  - Dependencies are enablers, not gates. `requires` shows what's possible
+    next, not a mandatory sequence — you may revisit and refine an earlier
+    artifact as you learn more, then continue forward again.
+  - If something's wrong in an earlier artifact, fix that artifact directly
+    rather than restarting the whole change.
+  - Update preserves context; a new change provides clarity. Prefer editing
+    an artifact in place for refinements; start a new change when the intent
+    has genuinely shifted.
+  - Specs are organized by domain/capability (e.g. `specs/auth/`,
+    `specs/payments/`), one directory per capability.
+  - Task progress is tracked via checkboxes in tasks.md — that file is the
+    source of truth for what's done, not any external tracker.
+
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    template: proposal.md
+    description: Initial proposal document outlining the change
+    instruction: |
+      Create the proposal document that establishes WHY this change is needed.
+      Cover Why, What Changes, the new/modified capabilities this change
+      introduces, and its Impact. Do not jump ahead to specs or design here —
+      this document is purely the case for why the change should happen at
+      all.
+
+  - id: specs
+    generates: "specs/**/*.md"
+    template: spec.md
+    description: Capability specifications
+    instruction: |
+      Write detailed specs for each operation in the capability, one
+      directory per capability. Do not describe implementation details
+      here; specs describe behavior/contract only.
+
+      Structural rules (a spec that violates these is invalid, not just
+      incomplete):
+      - Delta specs (this artifact) never include a `## Purpose` section —
+        that belongs only in the persistent baseline spec, and is added
+        there at sync/archive time for a capability that's new.
+      - Each requirement is its own `### Requirement: <name>` header.
+      - The SHALL/MUST statement belongs on the line(s) immediately after
+        the requirement header, not in the header itself.
+      - Every requirement has at least one `#### <Scenario name>` under it.
+        A requirement with zero scenarios is a defect.
+      - When this spec is a delta against an existing capability, group
+        requirements under `## ADDED Requirements`, `## MODIFIED
+        Requirements`, `## REMOVED Requirements`, or `## RENAMED
+        Requirements` — these delta headers are only meaningful in a
+        change's own specs/ directory, never in the persistent baseline.
+      - RENAMED entries need both `FROM: ### Requirement: <old name>` and
+        `TO: ### Requirement: <new name>`.
+      - MODIFIED entries must restate the requirement's full body
+        (statement + all scenarios), not a partial diff — sync later
+        replaces the whole requirement with this block.
+      - A capability's spec.md must live in a capability subdirectory
+        (e.g. `specs/auth/spec.md`); a spec.md at the specs/ root is
+        invalid.
+      - No name may appear in more than one of ADDED/MODIFIED/REMOVED/
+        RENAMED, and no RENAMED TO/FROM name may collide with an ADDED or
+        REMOVED name.
+
+  - id: design
+    generates: design.md
+    template: design.md
+    description: Design and architecture document
+    instruction: |
+      Design the system architecture and implementation approach that
+      satisfies the specs. Cover Context, Goals/Non-Goals, Decisions (with
+      rationale and alternatives considered), and Risks/Trade-offs. This
+      artifact is optional — skip it for changes where there's no
+      meaningful architectural decision to record.
+
+  - id: tasks
+    generates: tasks.md
+    template: tasks.md
+    description: Implementation tasks
+    instruction: |
+      Break down the design into concrete, actionable tasks grouped under
+      numbered sections (`## 1. <Group Name>`), with checkbox items
+      numbered within each group (`- [ ] 1.1 ...`). Each task should be
+      independent enough to implement and verify on its own, with
+      dependencies between tasks made explicit. This file is the single
+      source of truth for completion — apply, verify, and archive all
+      read it.
+
+new:
+  description: Scaffold a new change directory without generating any artifacts yet
+  instruction: |
+    Create the change's directory structure only — no proposal, specs,
+    design, or tasks content. This is the starting point before propose,
+    continue, or ff generate real content. Stop once the scaffold exists;
+    do not pre-fill any artifact file.
+  checklist: |
+    - Change directory exists at the expected location
+    - No artifact files have been written yet
+  requires: []
+
+propose:
+  artifacts: [proposal]
+  description: Establish the why before diving into specs or design
+  instruction: |
+    Establish the WHY before diving into specs or design. Scaffold the
+    change first (see `new`) if it doesn't exist yet.
+  checklist: |
+    - Why explains the problem and why now
+    - What Changes is specific about new capabilities, modifications, or
+      removals
+    - Capabilities lists new/modified capabilities by kebab-case name
+    - Impact covers affected code, APIs, dependencies, and systems
+  requires: []
+
+specs:
+  artifacts: [specs]
+  description: Write specifications for each operation or capability
+  instruction: |
+    Write specifications for each operation or capability. Follow the
+    `specs` artifact's structural rules — they're enforced at sync/archive
+    time, so get them right here rather than discovering the break later.
+  checklist: |
+    - No delta spec includes a `## Purpose` section
+    - Define all operations and their contracts
+    - Include failure scenarios and error handling
+    - Every requirement has a SHALL/MUST statement in its body and at
+      least one scenario
+    - Delta sections (ADDED/MODIFIED/REMOVED/RENAMED) are used correctly,
+      with no name colliding across sections
+    - Each capability's spec lives under its own specs/<capability>/
+      subdirectory, never at the specs/ root
+  requires: [proposal]
+
+design:
+  artifacts: [design]
+  description: Design the system architecture and implementation approach
+  instruction: |
+    Design the system architecture and implementation approach. Skip this
+    action entirely (mark it not applicable) when the change has no
+    meaningful architectural decision to record — it's conditional, not
+    mandatory.
+  checklist: |
+    - Context describes current state and constraints without restating
+      the proposal's motivation
+    - Goals/Non-Goals are both stated
+    - Decisions include rationale and alternatives considered
+    - Risks/Trade-offs are documented
+    - Confirm design aligns with specs
+  requires: [specs]
+
+tasks:
+  artifacts: [tasks]
+  description: Break the design into implementation tasks
+  instruction: |
+    Break the design into implementation tasks.
+  checklist: |
+    - Tasks are grouped under numbered sections with numbered checkbox
+      items (e.g. `1.1`, `1.2` under `## 1. ...`)
+    - Each task is independent and concrete
+    - Dependencies are explicit
+  requires: [design]
+
+continue:
+  description: Generate exactly the next ready artifact for this change, in dependency order
+  instruction: |
+    Look at what's already been generated for this change and what
+    `requires` says is now unblocked. Generate exactly ONE artifact — the
+    next ready one — by following that artifact's own action above. Do
+    not skip ahead or generate more than one artifact per invocation.
+  checklist: |
+    - Exactly one new artifact was generated
+    - The artifact chosen was actually next in dependency order, not
+      chosen arbitrarily
+  requires: []
+
+ff:
+  description: Fast-forward — generate every remaining planning artifact for this change in one pass
+  instruction: |
+    Generate the full remaining set of planning artifacts (proposal,
+    specs, design, tasks) for this change by invoking `propose`, `specs`,
+    `design`, and `tasks` in that order, skipping any that already exist
+    or are conditional and not applicable (e.g. design when there's no
+    architectural decision to record). Re-check what's on disk before
+    generating each one — do not rely on what you generated earlier in
+    this same pass, since context can drift from disk state. Stop once
+    every artifact is generated or explicitly skipped; this action never
+    touches `apply` or `archive`.
+  checklist: |
+    - Every non-conditional planning artifact exists on disk
+    - Any skipped conditional artifact was skipped deliberately, not
+      silently
+    - No artifact was generated twice or overwritten without re-reading
+      its current content first
+  requires: []
+
+update:
+  description: Revise one or more existing planning artifacts to keep them coherent, without touching code
+  instruction: |
+    Read the existing artifact(s) that need revision, then edit them in
+    place to reflect the new understanding. Never create a new artifact
+    here — if an artifact doesn't exist yet, that's `continue`'s job, not
+    `update`'s. Never edit implementation code here — that's `apply`'s
+    job. If the change's intent has genuinely shifted rather than just
+    needing a refinement, prefer starting a new change (`new`) over
+    forcing this one to cover it.
+  checklist: |
+    - Only existing artifact files were edited; nothing new was created
+    - No implementation code was touched
+    - Downstream artifacts that assumed the old content were re-checked
+      for coherence (e.g. a design.md change reviewed against tasks.md)
+  requires: []
+
+apply:
+  description: Execute the tasks and check them off as you complete them
+  instruction: |
+    Read context files, work through pending tasks, mark complete as you
+    go in tasks.md yourself — HoloSpec does not track apply progress. If
+    you hit a blocker or genuine ambiguity, stop and surface it rather
+    than guessing; do not treat any of this schema's fields as proof a
+    task is actually done — only the code and a checked box are.
+  checklist: |
+    - All tasks marked complete, or blockers explicitly surfaced
+    - No blocking issues remain unaddressed
+  requires: [tasks]
+
+sync:
+  description: Merge this change's delta specs into the persistent baseline specs
+  instruction: |
+    For each capability this change touches, merge its delta spec (in
+    specs/) into the corresponding capability's spec in the persistent
+    baseline. Do this before archiving if the change has any delta specs;
+    archive relies on this having already happened rather than doing the
+    merge itself.
+
+    Merge-safety rules to apply:
+    - A baseline capability spec always has a `## Purpose` section. If the
+      capability is new (no existing baseline spec.md), write a one-or-two
+      sentence Purpose when creating the baseline file during this merge —
+      the delta spec itself never carries one. If the capability already
+      has a baseline, preserve its existing Purpose as-is unless the change
+      explicitly redefines the capability's purpose.
+    - No requirement silently dropped. Every requirement present in the
+      baseline before the merge must still be present after, unless
+      explicitly removed by a REMOVED operation in the delta.
+    - No duplicate names post-merge. An ADDED requirement must not collide
+      with an existing name already in the baseline.
+    - No dangling RENAMED FROM. If a delta says "RENAMED FROM: X", confirm
+      X actually exists in the baseline before the rename is applied.
+    - MODIFIED blocks are full replacements, not diffs. Do not patch a
+      requirement incrementally — replace its entire body with the
+      MODIFIED block's content.
+    - Every requirement has at least one scenario after the merge. A
+      requirement with zero scenarios post-merge is a defect — flag it
+      rather than silently accepting, especially where a MODIFIED block
+      dropped a scenario name that existed in the baseline before it.
+    - No cross-section name conflicts. A name added in one section must
+      not collide with a name already used in a different section of the
+      same document.
+    - Gut-check large baselines by diffing the whole file, not just the
+      section you think changed — a large document can have an unrelated
+      section silently rewritten by a bad delta.
+    - Apply order for multiple operation types in one delta:
+      RENAMED -> REMOVED -> MODIFIED -> ADDED.
+    - Never copy a delta file verbatim over the baseline — always merge
+      into the baseline's existing structure.
+  checklist: |
+    - Baseline reflects every delta operation with nothing dropped
+    - No dangling renames or duplicate/cross-section name conflicts
+    - Every requirement in the baseline still has at least one scenario
+    - No delta file was copied verbatim in place of a real merge
+  requires: [specs]
+
+archive:
+  description: File a completed change away after confirming its specs are synced
+  instruction: |
+    Check tasks.md first: warn if any tasks are still incomplete, but this
+    does not block archiving — proceed once you've flagged it. If this
+    change has delta specs that haven't been merged into the baseline yet,
+    run `sync` first — archive does not do the merge itself. Once specs
+    are synced (or there were none), move this change's proposal/specs/
+    design/tasks out of the active change location into an archive
+    directory (e.g. dated, so archiving the same name twice doesn't
+    collide) so it's no longer treated as an active change.
+  checklist: |
+    - Any delta specs were synced into the baseline before archiving
+    - Incomplete tasks were flagged, even though they don't block archive
+    - Change artifacts moved out of the active change location into a
+      uniquely named archive location
+  requires: [specs]
+
+bulk-archive:
+  description: Archive multiple completed changes in one batch
+  instruction: |
+    Given a set of candidate changes, confirm the whole batch with the
+    user before touching anything — this is a single all-or-nothing
+    confirmation, not one per change. For each change in the batch, check
+    for capability conflicts against the others (two changes touching the
+    same capability's delta specs) and resolve or exclude conflicting
+    deltas from sync rather than silently merging them. For each
+    non-conflicting change with delta specs, run `sync`, then run
+    `archive`'s file-away step. If synced-spec lookup fails for any change,
+    abort the entire batch rather than partially archiving it.
+  checklist: |
+    - Batch was confirmed once, up front, before any change was touched
+    - Capability conflicts across the batch were detected and resolved or
+      excluded, not silently merged
+    - Every archived change in the batch was fully synced and moved; none
+      left partially archived
+  requires: [specs]
+
+explore:
+  description: Think through ideas or investigate the codebase before committing to a change
+  instruction: |
+    Research and reason about the problem — read code, read existing
+    change artifacts, discuss trade-offs — without writing implementation
+    code and without creating or editing any planning artifact unless the
+    user explicitly asks you to capture something. Treat this as a
+    read-only stance by default.
+  checklist: |
+    - No implementation code was written
+    - No planning artifact was created or edited without explicit request
+  requires: []
+
+verify:
+  description: Audit a change's implementation against its own planning artifacts
+  instruction: |
+    Read the change's context files (the same ones `apply` uses) and
+    compare the actual implementation against proposal/specs/design/tasks.
+    Score across three dimensions: completeness (all tasks done, all
+    requirements implemented, scenarios covered), correctness
+    (implementation matches spec intent, edge cases handled), and
+    coherence (design decisions reflected in code, patterns consistent).
+    Produce a report of issues by severity; do not edit code or artifacts
+    yourself. Degrade gracefully if design.md or specs don't exist for
+    this change rather than treating their absence as an error. When
+    unsure of severity, prefer the lower one (suggestion over warning,
+    warning over critical).
+  checklist: |
+    - All three dimensions (completeness, correctness, coherence) were
+      assessed
+    - Every issue raised has an explicit severity, and severity was not
+      inflated when uncertain
+    - No code or artifact file was modified as part of this action
+  requires: [tasks]
