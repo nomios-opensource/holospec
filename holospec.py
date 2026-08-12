@@ -59,6 +59,7 @@ def main() -> None:
 def schemacheck(file: Path, as_json: bool) -> None:
     """Validate a schema file."""
     try:
+        file = resolve_schema_file(file)
         schema = load_schema_file(file)
     except HoloSpecError as exc:
         _emit_error(exc, as_json)
@@ -272,7 +273,7 @@ def init(schema_name: str, schema_url: t.Optional[str], as_json: bool) -> None:
 
     dest_dir = root / "schemas" / schema_name
     schema_fetched = False
-    if not (dest_dir / "schema.yaml").is_file():
+    if not (dest_dir / "schema.yaml").is_file() and not (dest_dir / "schema.yml").is_file():
         location = schema_url or SCHEMA_REGISTRY.get(schema_name)
         if location is None:
             _emit_error(
@@ -676,6 +677,16 @@ def _format_pydantic_error(err: "ErrorDetails") -> str:
     return f"{location}: {err['msg']}"
 
 
+def resolve_schema_file(path: Path) -> Path:
+    """Resolve a user-supplied path to a schema file, descending into a directory."""
+    if path.is_dir():
+        for candidate in (path / "schema.yaml", path / "schema.yml"):
+            if candidate.is_file():
+                return candidate
+        raise HoloSpecError("schema_not_found", f"No schema.yaml or schema.yml found in: {path}")
+    return path
+
+
 def load_schema_file(path: Path) -> dict[str, t.Any]:
     """Load and parse a schema YAML file from disk."""
     try:
@@ -724,7 +735,8 @@ def find_project_root(name: str, start: t.Optional[Path] = None) -> t.Optional[P
     current = (start or Path.cwd()).resolve()
     for marker in PROJECT_ROOT_MARKERS:
         candidate_root = current / marker
-        if (candidate_root / "schemas" / name / "schema.yaml").is_file():
+        schema_dir = candidate_root / "schemas" / name
+        if (schema_dir / "schema.yaml").is_file() or (schema_dir / "schema.yml").is_file():
             return candidate_root
     return None
 
@@ -733,7 +745,7 @@ def resolve_schema_path(name: str, start: t.Optional[Path] = None) -> t.Optional
     """Project-local resolution: qualifying project root directly under start (or cwd)."""
     root = find_project_root(name, start)
     if root is not None:
-        return root / "schemas" / name / "schema.yaml"
+        return resolve_schema_file(root / "schemas" / name)
     return None
 
 
@@ -753,11 +765,15 @@ def load_schema(name: str, start: t.Optional[Path] = None) -> dict[str, t.Any]:
 
 
 def load_config(root: t.Optional[Path]) -> dict[str, t.Any]:
-    """Load <root>/config.yaml if present. Returns {} if root or the file is absent."""
+    """Load <root>/config.yaml (or config.yml) if present. Returns {} if root or the file is absent."""
     if root is None:
         return {}
-    config_path = root / "config.yaml"
-    if not config_path.is_file():
+    config_path = None
+    for candidate in (root / "config.yaml", root / "config.yml"):
+        if candidate.is_file():
+            config_path = candidate
+            break
+    if config_path is None:
         return {}
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)

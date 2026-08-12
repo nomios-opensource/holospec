@@ -7,6 +7,7 @@ from holospec import (
     find_project_root,
     load_schema,
     load_schema_file,
+    resolve_schema_file,
     resolve_schema_path,
 )
 
@@ -97,6 +98,45 @@ def test_given_direct_yaml_path_that_does_not_exist_when_loading_schema_then_rai
     with pytest.raises(HoloSpecError) as exc_info:
         load_schema(str(missing))
     assert exc_info.value.code == "schema_not_found"
+
+
+def test_given_dir_with_no_schema_file_when_resolving_schema_file_then_raises(tmp_path):
+    # GIVEN a directory with neither schema.yaml nor schema.yml
+    empty_dir = tmp_path / "schemas" / "custom"
+    empty_dir.mkdir(parents=True)
+
+    # WHEN resolving the schema file for that directory
+
+    # THEN a schema_not_found error is raised
+    with pytest.raises(HoloSpecError) as exc_info:
+        resolve_schema_file(empty_dir)
+    assert exc_info.value.code == "schema_not_found"
+
+
+def test_given_schema_yml_extension_when_resolving_schema_file_then_finds_it(tmp_path):
+    # GIVEN a directory with only a schema.yml (not .yaml)
+    schema_dir = tmp_path / "schemas" / "custom"
+    schema_dir.mkdir(parents=True)
+    (schema_dir / "schema.yml").write_text("propose:\n  requires: []\n")
+
+    # WHEN resolving the schema file for that directory
+    resolved = resolve_schema_file(schema_dir)
+
+    # THEN the schema.yml file is returned
+    assert resolved == schema_dir / "schema.yml"
+
+
+def test_given_project_root_with_yml_extension_when_loading_schema_then_loads_it(tmp_path, monkeypatch):
+    # GIVEN a project root whose schema is named schema.yml instead of schema.yaml
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "holospec" / "schemas" / "spec-driven").mkdir(parents=True)
+    (tmp_path / "holospec" / "schemas" / "spec-driven" / "schema.yml").write_text("propose:\n  requires: []\n")
+
+    # WHEN loading the schema by name
+
+    # THEN it is found and loaded despite the .yml extension
+    schema = load_schema("spec-driven")
+    assert schema == {"propose": {"requires": []}}
 
 
 def test_given_unresolvable_schema_name_when_loading_schema_then_raises_not_found(tmp_path, monkeypatch):
