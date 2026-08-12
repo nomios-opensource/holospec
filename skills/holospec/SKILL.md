@@ -40,3 +40,6 @@ than executing a workflow, run `holospec explain` first. It explains how
 the two files relate and returns the JSON Schema field reference for each,
 so you can validate field names and shapes against the real format instead
 of guessing from an example.
+
+After every edit to a schema, run `holospec schemacheck <path>` before
+considering the change done.

@@ -21,7 +21,7 @@ constitution: |
 
 artifacts:
   - id: proposal
-    generates: proposal.md
+    generates: changes/*/proposal.md
     template: proposal.md
     description: Initial proposal document outlining the change
     instruction: |
@@ -32,7 +32,7 @@ artifacts:
       all.
 
   - id: specs
-    generates: "specs/**/*.md"
+    generates: "changes/*/specs/**/*.md"
     template: spec.md
     description: Capability specifications
     instruction: |
@@ -68,7 +68,7 @@ artifacts:
         REMOVED name.
 
   - id: design
-    generates: design.md
+    generates: changes/*/design.md
     template: design.md
     description: Design and architecture document
     instruction: |
@@ -79,7 +79,7 @@ artifacts:
       meaningful architectural decision to record.
 
   - id: tasks
-    generates: tasks.md
+    generates: changes/*/tasks.md
     template: tasks.md
     description: Implementation tasks
     instruction: |
@@ -94,12 +94,14 @@ artifacts:
 new:
   description: Scaffold a new change directory without generating any artifacts yet
   instruction: |
-    Create the change's directory structure only — no proposal, specs,
-    design, or tasks content. This is the starting point before propose,
-    continue, or ff generate real content. Stop once the scaffold exists;
-    do not pre-fill any artifact file.
+    Create the change's directory at `<root>/changes/<change-name>/`, where
+    `<root>` is the path `workflow`/`action` reported and `<change-name>` is
+    a kebab-case slug for this change. Create only the directory itself —
+    no proposal, specs, design, or tasks content. This is the starting
+    point before propose, continue, or ff generate real content. Stop once
+    the scaffold exists; do not pre-fill any artifact file.
   checklist: |
-    - Change directory exists at the expected location
+    - Change directory exists at <root>/changes/<change-name>/
     - No artifact files have been written yet
   requires: []
 
