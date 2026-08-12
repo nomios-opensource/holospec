@@ -20,6 +20,7 @@ import shutil
 import sys
 import typing as t
 import urllib.request
+from importlib.resources import files
 from pathlib import Path
 from urllib.error import URLError
 
@@ -42,7 +43,7 @@ DEFAULT_SCHEMA = "spec-driven"
 """Schema used when a project doesn't pin one explicitly."""
 
 SCHEMA_REGISTRY: dict[str, str] = {
-    "spec-driven": str(Path(__file__).resolve().parent / "schemas" / "spec-driven"),
+    "spec-driven": str(files("holospec_assets").joinpath("schemas", "spec-driven")),
 }
 """Catalog of holospec project maintained schemas."""
 
@@ -248,7 +249,7 @@ def _render_action_text(result: dict[str, t.Any], action_id: str) -> None:
         click.echo(f"\n## Context\n\n{result['context']}")
 
 
-SKILL_TEMPLATE_PATH = Path(__file__).resolve().parent / "skills" / "holospec" / "SKILL.md"
+SKILL_TEMPLATE_PATH = files("holospec_assets").joinpath("SKILL.md")
 
 
 def _stdin_isatty() -> bool:

@@ -1,0 +1,1 @@
+../skills/holospec/SKILL.md

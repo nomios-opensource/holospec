@@ -1,0 +1,1 @@
+"""Holospec static assets."""

@@ -18,6 +18,13 @@ holospec = "holospec:main"
 
 [tool.setuptools]
 py-modules = ["holospec"]
+packages = ["holospec_assets"]
+
+[tool.setuptools.package-dir]
+holospec_assets = "assets"
+
+[tool.setuptools.package-data]
+holospec_assets = ["*.md", "schemas/**/*.yaml", "schemas/**/*.md"]
 
 [dependency-groups]
 dev = [
