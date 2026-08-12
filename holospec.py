@@ -251,14 +251,70 @@ def _render_action_text(result: dict[str, t.Any], action_id: str) -> None:
 SKILL_TEMPLATE_PATH = Path(__file__).resolve().parent / "skills" / "holospec" / "SKILL.md"
 
 
+def _stdin_isatty() -> bool:
+    """Indirection point so tests can force the interactive-prompt path under CliRunner."""
+    return sys.stdin.isatty()
+
+
+def _discover_local_schemas(root: t.Optional[Path]) -> list[str]:
+    """List schema names already present under root/schemas/ (has a schema.yaml or .yml)."""
+    if root is None:
+        return []
+    schemas_dir = root / "schemas"
+    if not schemas_dir.is_dir():
+        return []
+    return sorted(
+        p.name
+        for p in schemas_dir.iterdir()
+        if p.is_dir() and ((p / "schema.yaml").is_file() or (p / "schema.yml").is_file())
+    )
+
+
+def _schema_choices(root: t.Optional[Path]) -> list[str]:
+    """Local project schemas (offered first) plus the built-in registry, deduplicated."""
+    choices: list[str] = []
+    for name in [*_discover_local_schemas(root), *SCHEMA_REGISTRY]:
+        if name not in choices:
+            choices.append(name)
+    return choices
+
+
+def _prompt_schema_choice(root: t.Optional[Path]) -> str:
+    """Ask the user to pick a schema from local project schemas plus the built-in registry."""
+    choices = _schema_choices(root)
+    local = _discover_local_schemas(root)
+
+    click.echo("Select a schema:")
+    for i, name in enumerate(choices, start=1):
+        source = "local" if name in local else "upstream"
+        click.echo(f"  {i}. {name} ({source})")
+
+    selection = t.cast(int, click.prompt("Enter a number", type=click.IntRange(1, len(choices)), default=1))
+    return choices[selection - 1]
+
+
 @main.command()
-@click.option("--schema", "schema_name", default=DEFAULT_SCHEMA, help="Schema name to fetch")
+@click.option("--schema", "schema_name", default=None, help="Schema name to fetch (skips the interactive prompt)")
 @click.option("--schema-url", "schema_url", default=None, help="Override schema source (path or URL)")
 @click.option("--json", "as_json", is_flag=True, help="JSON output")
-def init(schema_name: str, schema_url: t.Optional[str], as_json: bool) -> None:
+def init(schema_name: t.Optional[str], schema_url: t.Optional[str], as_json: bool) -> None:
     """Initialize a new project or detect an existing one."""
     root = find_any_project_root()
     created = False
+
+    if schema_name is None:
+        if _stdin_isatty():
+            schema_name = _prompt_schema_choice(root)
+        else:
+            choices = _schema_choices(root)
+            _emit_error(
+                HoloSpecError(
+                    "schema_not_specified",
+                    "No --schema given and input is non-interactive; pass --schema explicitly. "
+                    f"Available schemas: {', '.join(choices)}",
+                ),
+                as_json,
+            )
 
     if root is None:
         root = Path.cwd() / PROJECT_ROOT_MARKERS[0]

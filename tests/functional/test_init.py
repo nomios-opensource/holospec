@@ -26,7 +26,7 @@ def test_given_no_existing_root_when_init_run_then_scaffolds_holospec_dir(isolat
     runner = CliRunner()
 
     # WHEN running init
-    result = runner.invoke(main, ["init", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
 
     # THEN it scaffolds a new holospec/ root and installs the skill file
     assert result.exit_code == 0
@@ -45,10 +45,10 @@ def test_given_no_existing_root_when_init_run_then_scaffolds_holospec_dir(isolat
 def test_given_init_already_run_when_init_run_again_then_symlink_is_recreated(isolated_cwd):
     # GIVEN a project where init has already installed the skill symlink
     runner = CliRunner()
-    runner.invoke(main, ["init", "--json"])
+    runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
 
     # WHEN running init again
-    result = runner.invoke(main, ["init", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
 
     # THEN the symlink is replaced cleanly rather than erroring or nesting
     assert result.exit_code == 0
@@ -66,7 +66,7 @@ def test_given_real_dir_at_claude_skill_path_when_init_run_then_replaces_it_with
     runner = CliRunner()
 
     # WHEN running init
-    result = runner.invoke(main, ["init", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
 
     # THEN the stale directory is replaced with a symlink to the canonical skill
     assert result.exit_code == 0
@@ -80,7 +80,7 @@ def test_given_no_existing_root_when_init_run_without_json_then_prints_text_summ
     runner = CliRunner()
 
     # WHEN running init without --json
-    result = runner.invoke(main, ["init"])
+    result = runner.invoke(main, ["init", "--schema", "spec-driven"])
 
     # THEN it prints a human-readable summary
     assert result.exit_code == 0
@@ -96,7 +96,7 @@ def test_given_existing_holospec_dir_when_init_run_without_json_then_prints_dete
     runner = CliRunner()
 
     # WHEN running init without --json
-    result = runner.invoke(main, ["init"])
+    result = runner.invoke(main, ["init", "--schema", "spec-driven"])
 
     # THEN it prints a human-readable summary noting detection, not scaffolding
     assert result.exit_code == 0
@@ -111,7 +111,7 @@ def test_given_existing_openspec_dir_when_init_run_then_detects_it_without_scaff
     runner = CliRunner()
 
     # WHEN running init
-    result = runner.invoke(main, ["init", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
 
     # THEN it detects the existing openspec/ root and does not scaffold
     assert result.exit_code == 0
@@ -130,7 +130,7 @@ def test_given_existing_holospec_dir_when_init_run_then_detects_it_without_scaff
     runner = CliRunner()
 
     # WHEN running init
-    result = runner.invoke(main, ["init", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
 
     # THEN it detects the existing holospec/ root and does not create a new one
     assert result.exit_code == 0
@@ -149,7 +149,7 @@ def test_given_unrelated_openspec_dir_in_ancestor_when_init_run_then_scaffolds_h
     runner = CliRunner()
 
     # WHEN running init from the nested, unrelated project directory
-    result = runner.invoke(main, ["init", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
 
     # THEN it scaffolds a new root here rather than adopting the ancestor's
     assert result.exit_code == 0
@@ -167,7 +167,7 @@ def test_given_both_openspec_and_holospec_dirs_when_init_run_then_holospec_takes
     runner = CliRunner()
 
     # WHEN running init
-    result = runner.invoke(main, ["init", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
 
     # THEN holospec/ is detected as the root, per documented precedence
     assert result.exit_code == 0
@@ -182,7 +182,7 @@ def test_given_no_existing_schema_when_init_run_then_fetches_default_schema_from
     runner = CliRunner()
 
     # WHEN running init with the default schema name
-    result = runner.invoke(main, ["init", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
 
     # THEN it copies schema.yaml + templates/ from the registry's local path
     assert result.exit_code == 0
@@ -202,7 +202,7 @@ def test_given_existing_schema_when_init_run_then_fetch_is_skipped(isolated_cwd)
     runner = CliRunner()
 
     # WHEN running init
-    result = runner.invoke(main, ["init", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
 
     # THEN the existing schema is left untouched and not re-fetched
     assert result.exit_code == 0
@@ -307,6 +307,69 @@ def test_given_url_fetch_failure_when_init_run_then_reports_schema_fetch_failed(
     assert result.exit_code == 1
     payload = json.loads(result.output)
     assert payload["error"]["code"] == "schema_fetch_failed"
+
+
+def test_given_no_schema_flag_and_noninteractive_input_when_init_run_then_errors(isolated_cwd):
+    # GIVEN no --schema flag and non-interactive stdin (the CliRunner default)
+    runner = CliRunner()
+
+    # WHEN running init
+    result = runner.invoke(main, ["init", "--json"])
+
+    # THEN it errors rather than silently picking a schema
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["error"]["code"] == "schema_not_specified"
+    assert "spec-driven" in payload["error"]["message"]
+
+
+def test_given_no_schema_flag_and_interactive_input_when_init_run_then_prompts_and_uses_selection(
+    isolated_cwd, monkeypatch
+):
+    # GIVEN interactive stdin and no --schema flag
+    monkeypatch.setattr(holospec, "_stdin_isatty", lambda: True)
+    runner = CliRunner()
+
+    # WHEN running init and answering the prompt with the default selection
+    result = runner.invoke(main, ["init", "--json"], input="\n")
+
+    # THEN it prompts for a schema choice and proceeds with the selected one
+    assert result.exit_code == 0
+    assert "Select a schema:" in result.output
+    payload = json.loads(result.output[result.output.index("{") :])
+    assert payload["schema"] == "spec-driven"
+
+
+def test_given_local_project_schema_when_init_run_interactively_then_offered_first(isolated_cwd, monkeypatch):
+    # GIVEN a project with a local schema already present under holospec/schemas/
+    local_dir = isolated_cwd / "holospec" / "schemas" / "mine"
+    local_dir.mkdir(parents=True)
+    (local_dir / "schema.yaml").write_text("name: mine\nartifacts: []\n")
+    monkeypatch.setattr(holospec, "_stdin_isatty", lambda: True)
+    runner = CliRunner()
+
+    # WHEN running init and selecting the first offered choice
+    result = runner.invoke(main, ["init", "--json"], input="1\n")
+
+    # THEN the local schema is listed first and marked as local, and gets selected
+    assert result.exit_code == 0
+    assert "1. mine (local)" in result.output
+    payload = json.loads(result.output[result.output.index("{") :])
+    assert payload["schema"] == "mine"
+
+
+def test_given_discover_local_schemas_when_root_is_none_then_returns_empty_list():
+    # GIVEN no project root
+    # WHEN discovering local schemas
+    # THEN an empty list is returned without touching the filesystem
+    assert holospec._discover_local_schemas(None) == []
+
+
+def test_given_root_without_schemas_dir_when_discover_local_schemas_then_returns_empty_list(tmp_path):
+    # GIVEN a root directory with no schemas/ subdirectory
+    # WHEN discovering local schemas
+    # THEN an empty list is returned
+    assert holospec._discover_local_schemas(tmp_path) == []
 
 
 class _FakeResponse:

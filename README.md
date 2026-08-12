@@ -20,7 +20,7 @@ Most tools define the process. HoloSpec makes the process discoverable. Workflow
 
 ## Features
 
-- **Tiny footprint**: One Python file, under 900 lines, with a single agent skill covering every interaction.
+- **Tiny footprint**: One Python file, under 1000 lines, with a single agent skill covering every interaction.
 - **Bring your own way of working**: No hard-coded processes, methodologies, or business logic. Everything comes from your schema.
 - **Instructions, not execution**: Exposes instructions and workflow knowledge without execution, agents interpret instructions and perform the work.
 - **Beyond software development**: Support software delivery, design, planning, estimation, operations or any other process of your own.
