@@ -101,7 +101,7 @@ def workflow(schema_name: t.Optional[str], tree: bool, as_json: bool) -> None:
     except HoloSpecError as exc:
         _emit_error(exc, as_json)
 
-    actions = _build_workflow_actions(schema)
+    actions = _build_workflow_actions(schema, root)
 
     if as_json:
         click.echo(
@@ -125,7 +125,7 @@ def workflow(schema_name: t.Optional[str], tree: bool, as_json: bool) -> None:
     _render_workflow_text(schema, root, order, actions)
 
 
-def _build_workflow_actions(schema: dict[str, t.Any]) -> list[dict[str, t.Any]]:
+def _build_workflow_actions(schema: dict[str, t.Any], default_root: t.Optional[Path] = None) -> list[dict[str, t.Any]]:
     artifact_map = {a["id"]: a for a in schema.get("artifacts", []) if isinstance(a, dict) and "id" in a}
 
     actions = []
@@ -138,7 +138,9 @@ def _build_workflow_actions(schema: dict[str, t.Any]) -> list[dict[str, t.Any]]:
         }
         action_artifact_ids = action.get("artifacts", [])
         if action_artifact_ids:
-            entry["generates"] = [artifact_map[a]["generates"] for a in action_artifact_ids if a in artifact_map]
+            referenced = [artifact_map[a] for a in action_artifact_ids if a in artifact_map]
+            entry["generates"] = [a["generates"] for a in referenced]
+            entry["roots"] = [str(resolve_artifact_root(a, default_root)) for a in referenced]
         actions.append(entry)
     return actions
 
@@ -164,7 +166,12 @@ def _render_workflow_text(
         if entry["requires"]:
             click.echo(f"\nRequires: {', '.join(entry['requires'])}")
         if entry.get("generates"):
-            click.echo(f"\nGenerates: {', '.join(entry['generates'])}")
+            roots = entry.get("roots", [])
+            paths = [
+                f"{path} (root: {roots[i]})" if roots and roots[i] != str(root) else path
+                for i, path in enumerate(entry["generates"])
+            ]
+            click.echo(f"\nGenerates: {', '.join(paths)}")
         click.echo()
 
 
@@ -217,6 +224,11 @@ def action(action_id: str, schema_name: t.Optional[str], as_json: bool) -> None:
         config = load_config(root)
         result = lookup_action(schema, action_id, config)
         result["root"] = str(root) if root else None
+        if result.get("_artifacts_detail"):
+            result["_artifacts_detail"] = [
+                {**artifact, "resolved_root": str(resolve_artifact_root(artifact, root) or "") or None}
+                for artifact in result["_artifacts_detail"]
+            ]
     except HoloSpecError as exc:
         _emit_error(exc, as_json)
 
@@ -240,8 +252,11 @@ def _render_action_text(result: dict[str, t.Any], action_id: str) -> None:
     if result.get("requires"):
         click.echo(f"\nRequires: {', '.join(result['requires'])}")
     if result.get("_artifacts_detail"):
+        default_root = result.get("root")
         for artifact in result["_artifacts_detail"]:
-            click.echo(f"\nGenerates: {artifact.get('generates')}")
+            resolved_root = artifact.get("resolved_root")
+            suffix = f" (root: {resolved_root})" if resolved_root and resolved_root != default_root else ""
+            click.echo(f"\nGenerates: {artifact.get('generates')}{suffix}")
             click.echo(f"Template: {artifact.get('template')}")
     if result.get("constitution"):
         click.echo(f"\n## Constitution\n\n{result['constitution']}")
@@ -546,6 +561,16 @@ class Artifact(BaseModel):
         description="Path (or glob, e.g. 'specs/**/*.md') this artifact writes, relative to the project root.",
         examples=["proposal.md", "specs/**/*.md"],
     )
+    root: str | None = Field(
+        default=None,
+        description=(
+            "Override the project root this artifact's `generates` path is relative to "
+            "(by default the current working directory's marker dir). A relative value "
+            "here replaces that with <cwd>/<value>; an absolute value is used as-is. "
+            "Omit to keep the default."
+        ),
+        examples=[".", "/shared/implementation-reports"],
+    )
     template: str = Field(
         description="Template filename under schemas/<name>/templates/ to draft this artifact from.",
         examples=["proposal.md"],
@@ -796,6 +821,20 @@ def find_project_root(name: str, start: t.Optional[Path] = None) -> t.Optional[P
         if (schema_dir / "schema.yaml").is_file() or (schema_dir / "schema.yml").is_file():
             return candidate_root
     return None
+
+
+def resolve_artifact_root(artifact: dict[str, t.Any], default_root: t.Optional[Path]) -> t.Optional[Path]:
+    """Resolve the root an artifact's `generates` path is relative to.
+
+    An artifact-level `root` override replaces `default_root`: a relative
+    value resolves to <cwd>/<value>, an absolute value is used as-is.
+    Without an override, `default_root` passes through unchanged.
+    """
+    override = artifact.get("root")
+    if override is None:
+        return default_root
+    override_path = Path(override)
+    return override_path if override_path.is_absolute() else Path.cwd() / override_path
 
 
 def resolve_schema_path(name: str, start: t.Optional[Path] = None) -> t.Optional[Path]:
