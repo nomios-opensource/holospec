@@ -18,6 +18,11 @@ directory exists at the project root, don't guess at the workflow:
 
 Once installed, follow the skill's instructions instead of this file.
 
+## Commit messages
+
+Single-line commit messages only. No multiline body, no Co-Authored-By
+trailer.
+
 ## Contributing to HoloSpec itself
 
 - Install deps: `uv sync` (add `--group e2e` only if working on
