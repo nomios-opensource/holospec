@@ -786,16 +786,7 @@ def load_schema_file(path: Path) -> dict[str, t.Any]:
 
 
 def find_any_project_root(start: t.Optional[Path] = None) -> t.Optional[Path]:
-    """
-    Look for a project root marker directory directly under start (or cwd).
-
-    See PROJECT_ROOT_MARKERS. Regardless of what schemas it carries.
-    Used only for root detection (e.g. `init`), where there's no schema name
-    to qualify against yet. Does not walk up ancestor directories: the
-    project root is always directly under the current directory. Markers
-    are checked in PROJECT_ROOT_MARKERS order; the first match wins if more
-    than one exists at the same level.
-    """
+    """Find a PROJECT_ROOT_MARKERS dir directly under start/cwd, any schemas; no ancestor walk."""
     current = (start or Path.cwd()).resolve()
     for marker in PROJECT_ROOT_MARKERS:
         candidate_root = current / marker
@@ -805,15 +796,7 @@ def find_any_project_root(start: t.Optional[Path] = None) -> t.Optional[Path]:
 
 
 def find_project_root(name: str, start: t.Optional[Path] = None) -> t.Optional[Path]:
-    """
-    Look for a project root marker directory with schemas/<name>/schema.yaml under it.
-
-    See PROJECT_ROOT_MARKERS. Directly under start (or cwd).
-    Markers are checked in PROJECT_ROOT_MARKERS order; the first match wins
-    if more than one exists at the same level. Does not walk up ancestor
-    directories: the project root is always directly under the current
-    directory.
-    """
+    """Find a PROJECT_ROOT_MARKERS dir directly under start/cwd with schemas/<name>/schema.yaml; no ancestor walk."""
     current = (start or Path.cwd()).resolve()
     for marker in PROJECT_ROOT_MARKERS:
         candidate_root = current / marker
@@ -824,12 +807,7 @@ def find_project_root(name: str, start: t.Optional[Path] = None) -> t.Optional[P
 
 
 def resolve_artifact_root(artifact: dict[str, t.Any], default_root: t.Optional[Path]) -> t.Optional[Path]:
-    """Resolve the root an artifact's `generates` path is relative to.
-
-    An artifact-level `root` override replaces `default_root`: a relative
-    value resolves to <cwd>/<value>, an absolute value is used as-is.
-    Without an override, `default_root` passes through unchanged.
-    """
+    """Resolve the root an artifact's `generates` path is relative to (override replaces default_root)."""
     override = artifact.get("root")
     if override is None:
         return default_root
@@ -921,12 +899,7 @@ def build_producer_map(schema: dict[str, t.Any]) -> dict[str, list[str]]:
 
 
 def actions_topology(schema: dict[str, t.Any]) -> list[list[str]]:
-    """
-    Order actions into dependency levels.
-
-    Each level's actions are only blocked by prior levels, so actions within
-    the same level can run in parallel.
-    """
+    """Order actions into dependency levels; each level's actions can run in parallel."""
     action_ids = get_action_ids(schema)
     producers = build_producer_map(schema)
     in_degree = dict.fromkeys(action_ids, 0)
