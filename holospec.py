@@ -336,10 +336,11 @@ def init(schema_name: t.Optional[str], schema_url: t.Optional[str], as_json: boo
         root = Path.cwd() / PROJECT_ROOT_MARKERS[0]
         root.mkdir(parents=True, exist_ok=True)
         (root / "schemas").mkdir(exist_ok=True)
-        config_path = root / "config.yaml"
-        if not config_path.exists():
-            config_path.write_text("schema: spec-driven\n")
         created = True
+
+    config_path = root / "config.yaml"
+    if not config_path.exists() and not (root / "config.yml").exists():
+        config_path.write_text(f"schema: {schema_name}\n")
 
     skill_paths = _install_skill(Path.cwd())
 

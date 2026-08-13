@@ -42,6 +42,23 @@ def test_given_no_existing_root_when_init_run_then_scaffolds_holospec_dir(isolat
     assert claude_skill_path.read_text() == SKILL_SOURCE_PATH.read_text()
 
 
+def test_given_existing_root_without_config_when_init_run_then_creates_config(isolated_cwd):
+    # GIVEN an existing holospec/ root with a schema already present but no config.yaml
+    schema_dir = isolated_cwd / "holospec" / "schemas" / "spec-driven"
+    schema_dir.mkdir(parents=True)
+    (schema_dir / "schema.yaml").write_text(SPEC_DRIVEN_SCHEMA_DIR.joinpath("schema.yaml").read_text())
+    runner = CliRunner()
+
+    # WHEN running init and selecting that schema
+    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
+
+    # THEN config.yaml is created, pointing at the selected schema
+    assert result.exit_code == 0
+    config_path = isolated_cwd / "holospec" / "config.yaml"
+    assert config_path.is_file()
+    assert config_path.read_text() == "schema: spec-driven\n"
+
+
 def test_given_init_already_run_when_init_run_again_then_symlink_is_recreated(isolated_cwd):
     # GIVEN a project where init has already installed the skill symlink
     runner = CliRunner()
