@@ -10,6 +10,7 @@ lets them share instance state (self.project) — each stage here depends on
 artifacts the previous stage's agent call left on disk.
 """
 
+import re
 import shutil
 import subprocess
 import sys
@@ -23,7 +24,13 @@ claude_agent_sdk = pytest.importorskip(
 AssistantMessage = claude_agent_sdk.AssistantMessage
 ClaudeAgentOptions = claude_agent_sdk.ClaudeAgentOptions
 TextBlock = claude_agent_sdk.TextBlock
+ToolUseBlock = claude_agent_sdk.ToolUseBlock
 query = claude_agent_sdk.query
+
+# Matches a `holospec` invocation's subcommand and, for `action`, the
+# action id that follows it, e.g. "holospec action propose --json" ->
+# "action propose"; "holospec workflow --json" -> "workflow".
+HOLOSPEC_CALL_RE = re.compile(r"\bholospec\s+(action\s+\S+|\S+)")
 
 pytestmark = [pytest.mark.e2e, pytest.mark.asyncio]
 
@@ -49,10 +56,11 @@ satisfied.
 """
 
 
-async def _run_agent(cwd: Path, action: str) -> str:
+async def _run_agent(cwd: Path, action: str) -> list[str]:
+    """Drive one HoloSpec action and return the `holospec` subcommands invoked, in order."""
     options = ClaudeAgentOptions(
         cwd=str(cwd),
-        model="haiku",
+        model="sonnet",
         effort="low",
         permission_mode="acceptEdits",
         allowed_tools=["Read", "Write", "Bash", "Glob"],
@@ -61,13 +69,14 @@ async def _run_agent(cwd: Path, action: str) -> str:
     )
     prompt = STAGE_PROMPT.format(action=action, task_brief=TASK_BRIEF)
 
-    final_text = ""
+    holospec_calls: list[str] = []
     async for message in query(prompt=prompt, options=options):
         if isinstance(message, AssistantMessage):
             for block in message.content:
-                if isinstance(block, TextBlock):
-                    final_text += block.text
-    return final_text
+                if isinstance(block, ToolUseBlock) and block.name == "Bash":
+                    command = block.input.get("command", "")
+                    holospec_calls.extend(HOLOSPEC_CALL_RE.findall(command))
+    return holospec_calls
 
 
 class TestOpenSpecHelloWorldFlow:
@@ -94,31 +103,48 @@ class TestOpenSpecHelloWorldFlow:
         # GIVEN a project with the real HoloSpec spec-driven schema and skill installed
 
         # WHEN a real Claude agent works the "propose" action only
-        await _run_agent(project, "propose")
+        calls = await _run_agent(project, "propose")
 
-        # THEN a proposal document exists
-        assert (project / "proposal.md").exists()
+        # THEN a proposal document exists under the change's own directory
+        assert list(project.glob("holospec/changes/*/proposal.md"))
+
+        # AND the agent discovered the workflow before acting on it, and
+        # looked up "propose" specifically rather than some other action
+        assert "workflow" in calls
+        assert calls.index("workflow") < calls.index("action propose")
 
     async def test_given_proposal_when_ff_run_then_plan_artifacts_exist(self, project):  # noqa: D102
         # GIVEN a proposal from the previous stage
 
         # WHEN a real Claude agent fast-forwards through the remaining
         # planning artifacts (specs, design, tasks)
-        await _run_agent(project, "ff")
+        calls = await _run_agent(project, "ff")
 
         # THEN specs and a tasks breakdown exist (design is conditional and
         # may legitimately be skipped for a change this small)
-        assert list(project.glob("specs/**/*.md"))
-        assert (project / "tasks.md").exists()
+        assert list(project.glob("holospec/changes/*/specs/**/*.md"))
+        assert list(project.glob("holospec/changes/*/tasks.md"))
+
+        # AND the agent looked up the workflow before running "ff"
+        assert "workflow" in calls
+        assert "action ff" in calls
+        assert calls.index("workflow") < calls.index("action ff")
 
     async def test_given_plan_when_apply_run_then_script_works_and_tasks_complete(self, project):  # noqa: D102
         # GIVEN a completed plan from the previous stage
 
         # WHEN a real Claude agent works the "apply" action only
-        await _run_agent(project, "apply")
+        calls = await _run_agent(project, "apply")
 
-        # THEN every task is checked off
-        tasks_text = (project / "tasks.md").read_text()
+        # THEN the CLI was consulted before applying, and "apply" was the
+        # action looked up
+        assert "workflow" in calls
+        assert calls.index("workflow") < calls.index("action apply")
+
+        # AND every task is checked off
+        tasks_files = list(project.glob("holospec/changes/*/tasks.md"))
+        assert tasks_files
+        tasks_text = tasks_files[0].read_text()
         assert "[ ]" not in tasks_text
 
         # AND the resulting hello-world script runs and prints a greeting
@@ -140,11 +166,15 @@ class TestOpenSpecHelloWorldFlow:
         # GIVEN an applied change with completed tasks from the previous stage
 
         # WHEN a real Claude agent works the "archive" action only
-        await _run_agent(project, "archive")
+        calls = await _run_agent(project, "archive")
 
-        # THEN the change's artifacts are no longer in the active location
-        assert not (project / "proposal.md").exists()
-        assert not (project / "tasks.md").exists()
+        # THEN the CLI was consulted before archiving
+        assert "workflow" in calls
+        assert calls.index("workflow") < calls.index("action archive")
+
+        # AND the change's artifacts are no longer in the active location
+        active_changes = [p for p in project.glob("holospec/changes/*") if p.is_dir() and p.name != "archive"]
+        assert not active_changes
 
         # AND an archive directory was created to file the change away
         archive_dirs = [p for p in project.glob("**/*") if p.is_dir() and "archive" in p.name.lower()]
