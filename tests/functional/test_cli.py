@@ -9,7 +9,7 @@ from holospec import main
 
 FIXTURE_PATH = Path(__file__).resolve().parent.parent / "fixtures" / "dummy_schema.yaml"
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-SPEC_DRIVEN_SCHEMA_DIR = REPO_ROOT / "schemas" / "spec-driven"
+OPENSPEC_SCHEMA_DIR = REPO_ROOT / "schemas" / "openspec"
 
 
 @pytest.fixture(autouse=True)
@@ -21,11 +21,11 @@ def isolated_cwd(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg-data"))
 
     # holospec has no packaged builtin schema — provide a project-local
-    # spec-driven schema (tier 1) so the "default schema" tests resolve
+    # openspec schema (tier 1) so the "default schema" tests resolve
     holospec_dir = tmp_path / "holospec"
-    schemas_dir = holospec_dir / "schemas" / "spec-driven"
+    schemas_dir = holospec_dir / "schemas" / "openspec"
     schemas_dir.mkdir(parents=True)
-    shutil.copy(SPEC_DRIVEN_SCHEMA_DIR / "schema.yaml", schemas_dir / "schema.yaml")
+    shutil.copy(OPENSPEC_SCHEMA_DIR / "schema.yaml", schemas_dir / "schema.yaml")
 
 
 def test_given_valid_schema_file_when_schemacheck_run_then_reports_valid():
@@ -78,7 +78,7 @@ def test_given_default_schema_when_workflow_run_then_lists_actions_and_order():
 
     # THEN it reports the schema name/description, actions topology, and each action
     assert result.exit_code == 0
-    assert "# spec-driven Workflow" in result.output
+    assert "# openspec Workflow" in result.output
     assert "Holospec implementation of the Openspec default schema" in result.output
     assert "## Stages" in result.output
     assert "Stage 1:" in result.output
@@ -96,7 +96,7 @@ def test_given_default_schema_when_workflow_run_with_json_then_returns_actions_a
     # THEN it returns a JSON object with name, description, actions and order
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert payload["name"] == "spec-driven"
+    assert payload["name"] == "openspec"
     assert payload["description"] == "Holospec implementation of the Openspec default schema"
     assert "actions" in payload
     assert "order" in payload
@@ -107,7 +107,7 @@ def test_given_diamond_dependency_when_workflow_run_with_tree_then_shared_node_r
     # GIVEN a schema where two branches both require an artifact produced by
     # a shared upstream action, and both branches are in turn required by a
     # join action — the join node is reached twice during tree traversal
-    schema_path = Path("holospec/schemas/spec-driven/schema.yaml")
+    schema_path = Path("holospec/schemas/openspec/schema.yaml")
     schema_path.write_text(
         """
 artifacts:
@@ -218,7 +218,7 @@ def test_given_unknown_action_id_when_action_run_with_json_then_returns_error_js
 
 def test_given_config_yaml_with_context_when_action_run_then_context_disclosed():
     # GIVEN a project-local config.yaml with a context field
-    Path("holospec/config.yaml").write_text("schema: spec-driven\ncontext: This project prefers uv over pip.\n")
+    Path("holospec/config.yaml").write_text("schema: openspec\ncontext: This project prefers uv over pip.\n")
     runner = CliRunner()
 
     # WHEN running action for a known action id
@@ -244,7 +244,7 @@ def test_given_missing_schema_file_when_schemacheck_run_then_reports_schema_not_
 
 def test_given_broken_requires_when_workflow_run_then_reports_invalid_schema(tmp_path):
     # GIVEN a project-local schema whose requires references an unknown artifact
-    schema_path = Path("holospec/schemas/spec-driven/schema.yaml")
+    schema_path = Path("holospec/schemas/openspec/schema.yaml")
     schema_path.write_text("propose:\n  requires: [does_not_exist]\n")
     runner = CliRunner()
 
@@ -260,39 +260,39 @@ def test_given_config_yaml_names_custom_schema_when_workflow_run_without_flag_th
     # GIVEN a project-local schema named "custom" and a config.yaml pointing at it
     custom_dir = Path("holospec/schemas/custom")
     custom_dir.mkdir(parents=True)
-    shutil.copy(SPEC_DRIVEN_SCHEMA_DIR / "schema.yaml", custom_dir / "schema.yaml")
+    shutil.copy(OPENSPEC_SCHEMA_DIR / "schema.yaml", custom_dir / "schema.yaml")
     Path("holospec/config.yaml").write_text("schema: custom\n")
     runner = CliRunner()
 
     # WHEN running workflow with no --schema flag
     result = runner.invoke(main, ["workflow"])
 
-    # THEN it resolves the schema named in config.yaml, not the 'spec-driven' default
+    # THEN it resolves the schema named in config.yaml, not the 'openspec' default
     assert result.exit_code == 0
-    assert "# spec-driven Workflow" in result.output
+    assert "# openspec Workflow" in result.output
 
 
 def test_given_config_yaml_names_custom_schema_when_schema_flag_passed_then_flag_wins():
     # GIVEN a project-local schema named "custom" and a config.yaml pointing at it
     custom_dir = Path("holospec/schemas/custom")
     custom_dir.mkdir(parents=True)
-    shutil.copy(SPEC_DRIVEN_SCHEMA_DIR / "schema.yaml", custom_dir / "schema.yaml")
+    shutil.copy(OPENSPEC_SCHEMA_DIR / "schema.yaml", custom_dir / "schema.yaml")
     Path("holospec/config.yaml").write_text("schema: custom\n")
     runner = CliRunner()
 
     # WHEN running workflow with an explicit --schema overriding config.yaml
-    result = runner.invoke(main, ["workflow", "--schema", "spec-driven"])
+    result = runner.invoke(main, ["workflow", "--schema", "openspec"])
 
     # THEN the explicit flag is honored rather than config.yaml's value
     assert result.exit_code == 0
-    assert "# spec-driven Workflow" in result.output
+    assert "# openspec Workflow" in result.output
 
 
 def test_given_config_yaml_names_custom_schema_when_action_run_without_flag_then_uses_it():
     # GIVEN a project-local schema named "custom" and a config.yaml pointing at it
     custom_dir = Path("holospec/schemas/custom")
     custom_dir.mkdir(parents=True)
-    shutil.copy(SPEC_DRIVEN_SCHEMA_DIR / "schema.yaml", custom_dir / "schema.yaml")
+    shutil.copy(OPENSPEC_SCHEMA_DIR / "schema.yaml", custom_dir / "schema.yaml")
     Path("holospec/config.yaml").write_text("schema: custom\n")
     runner = CliRunner()
 
@@ -312,14 +312,14 @@ def test_given_no_config_yaml_when_workflow_run_without_flag_then_falls_back_to_
     # WHEN running workflow with no --schema flag
     result = runner.invoke(main, ["workflow"])
 
-    # THEN it falls back to the 'spec-driven' default
+    # THEN it falls back to the 'openspec' default
     assert result.exit_code == 0
-    assert "# spec-driven Workflow" in result.output
+    assert "# openspec Workflow" in result.output
 
 
 def test_given_broken_requires_when_action_run_then_reports_invalid_schema():
     # GIVEN a project-local schema whose requires references an unknown artifact
-    schema_path = Path("holospec/schemas/spec-driven/schema.yaml")
+    schema_path = Path("holospec/schemas/openspec/schema.yaml")
     schema_path.write_text("propose:\n  requires: [does_not_exist]\n")
     runner = CliRunner()
 
@@ -333,9 +333,9 @@ def test_given_broken_requires_when_action_run_then_reports_invalid_schema():
 
 def test_given_action_with_requires_and_context_when_action_run_then_text_output_shows_both():
     # GIVEN a project-local schema/config with requires, constitution, and context
-    schema_path = Path("holospec/schemas/spec-driven/schema.yaml")
+    schema_path = Path("holospec/schemas/openspec/schema.yaml")
     schema_path.write_text(schema_path.read_text() + "\nconstitution: Never diff-patch a MODIFIED block.\n")
-    Path("holospec/config.yaml").write_text("schema: spec-driven\ncontext: This project prefers uv over pip.\n")
+    Path("holospec/config.yaml").write_text("schema: openspec\ncontext: This project prefers uv over pip.\n")
     runner = CliRunner()
 
     # WHEN running action for an action with a non-empty requires list, in text mode
@@ -389,9 +389,9 @@ def test_given_explain_run_with_json_then_returns_structured_json_schema():
 
 def test_given_schema_and_config_constitution_when_action_run_then_both_disclosed():
     # GIVEN a schema with a constitution field and a config.yaml with its own constitution
-    schema_path = Path("holospec/schemas/spec-driven/schema.yaml")
+    schema_path = Path("holospec/schemas/openspec/schema.yaml")
     schema_path.write_text(schema_path.read_text() + "\nconstitution: Never diff-patch a MODIFIED block.\n")
-    Path("holospec/config.yaml").write_text("schema: spec-driven\nconstitution: Always ask before force-pushing.\n")
+    Path("holospec/config.yaml").write_text("schema: openspec\nconstitution: Always ask before force-pushing.\n")
     runner = CliRunner()
 
     # WHEN running action for a known action id

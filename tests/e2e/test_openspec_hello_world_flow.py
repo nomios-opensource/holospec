@@ -35,7 +35,7 @@ HOLOSPEC_CALL_RE = re.compile(r"\bholospec\s+(action\s+\S+|\S+)")
 pytestmark = [pytest.mark.e2e, pytest.mark.asyncio]
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-SPEC_DRIVEN_SCHEMA_DIR = REPO_ROOT / "schemas" / "spec-driven"
+OPENSPEC_SCHEMA_DIR = REPO_ROOT / "schemas" / "openspec"
 SKILL_SOURCE_PATH = REPO_ROOT / "skills" / "holospec" / "SKILL.md"
 
 TASK_BRIEF = """\
@@ -47,7 +47,7 @@ STAGE_PROMPT = """\
 This is an automated test run - be concise and token/cost economic. Keep
 every artifact minimal and skip anything not strictly necessary.
 
-This project uses HoloSpec for spec-driven development. Work through the
+This project uses HoloSpec for openspec development. Work through the
 "{action}" HoloSpec action only, for this change:
 
 {task_brief}
@@ -87,11 +87,11 @@ class TestOpenSpecHelloWorldFlow:
     def project(tmp_path_factory):  # noqa: D102
         project_dir = tmp_path_factory.mktemp("openspec_project")
 
-        # Install the real HoloSpec spec-driven schema and skill file exactly
+        # Install the real HoloSpec openspec schema and skill file exactly
         # as `holospec init` would, so the agent discovers the protocol
         # itself via the installed skill rather than being told about it.
-        shutil.copytree(SPEC_DRIVEN_SCHEMA_DIR, project_dir / "holospec" / "schemas" / "spec-driven")
-        (project_dir / "holospec" / "config.yaml").write_text("schema: spec-driven\n")
+        shutil.copytree(OPENSPEC_SCHEMA_DIR, project_dir / "holospec" / "schemas" / "openspec")
+        (project_dir / "holospec" / "config.yaml").write_text("schema: openspec\n")
 
         installed_skill_dir = project_dir / ".claude" / "skills" / "holospec"
         installed_skill_dir.mkdir(parents=True)
@@ -100,7 +100,7 @@ class TestOpenSpecHelloWorldFlow:
         return project_dir
 
     async def test_given_new_change_when_propose_run_then_proposal_exists(self, project):  # noqa: D102
-        # GIVEN a project with the real HoloSpec spec-driven schema and skill installed
+        # GIVEN a project with the real HoloSpec openspec schema and skill installed
 
         # WHEN a real Claude agent works the "propose" action only
         calls = await _run_agent(project, "propose")

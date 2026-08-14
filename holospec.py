@@ -39,11 +39,11 @@ PROJECT_ROOT_MARKERS: tuple[str, ...] = ("holospec", "openspec")
 files. Order is precedence; if none is found, the first value is used when
 scaffolding a new root."""
 
-DEFAULT_SCHEMA = "spec-driven"
+DEFAULT_SCHEMA = "openspec"
 """Schema used when a project doesn't pin one explicitly."""
 
 SCHEMA_REGISTRY: dict[str, str] = {
-    "spec-driven": str(files("holospec_assets").joinpath("schemas", "spec-driven")),
+    "openspec": str(files("holospec_assets").joinpath("schemas", "openspec")),
 }
 """Catalog of holospec project maintained schemas."""
 
@@ -620,7 +620,7 @@ class Schema(BaseModel):
     name: str | None = Field(
         default=None,
         description="Schema name, matched against `--schema`/config.yaml's `schema:`.",
-        examples=["spec-driven"],
+        examples=["openspec"],
     )
     version: int | None = Field(default=None, description="Schema version number, informational only.", examples=[1])
     description: str | None = Field(

@@ -125,7 +125,7 @@ def test_given_root_without_config_file_when_config_loaded_then_returns_empty_di
 def test_given_root_with_config_file_when_config_loaded_then_returns_parsed_fields(tmp_path):
     # GIVEN a root directory with a config.yaml carrying context and constitution
     (tmp_path / "config.yaml").write_text(
-        "schema: spec-driven\ncontext: Project context here.\nconstitution: Always be terse.\n"
+        "schema: openspec\ncontext: Project context here.\nconstitution: Always be terse.\n"
     )
 
     # WHEN loading config

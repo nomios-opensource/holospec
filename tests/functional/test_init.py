@@ -9,7 +9,7 @@ import holospec
 from holospec import main
 
 SKILL_SOURCE_PATH = Path(__file__).resolve().parent.parent.parent / "skills" / "holospec" / "SKILL.md"
-SPEC_DRIVEN_SCHEMA_DIR = Path(__file__).resolve().parent.parent.parent / "schemas" / "spec-driven"
+OPENSPEC_SCHEMA_DIR = Path(__file__).resolve().parent.parent.parent / "schemas" / "openspec"
 
 
 @pytest.fixture(autouse=True)
@@ -26,7 +26,7 @@ def test_given_no_existing_root_when_init_run_then_scaffolds_holospec_dir(isolat
     runner = CliRunner()
 
     # WHEN running init
-    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "openspec", "--json"])
 
     # THEN it scaffolds a new holospec/ root and installs the skill file
     assert result.exit_code == 0
@@ -44,28 +44,28 @@ def test_given_no_existing_root_when_init_run_then_scaffolds_holospec_dir(isolat
 
 def test_given_existing_root_without_config_when_init_run_then_creates_config(isolated_cwd):
     # GIVEN an existing holospec/ root with a schema already present but no config.yaml
-    schema_dir = isolated_cwd / "holospec" / "schemas" / "spec-driven"
+    schema_dir = isolated_cwd / "holospec" / "schemas" / "openspec"
     schema_dir.mkdir(parents=True)
-    (schema_dir / "schema.yaml").write_text(SPEC_DRIVEN_SCHEMA_DIR.joinpath("schema.yaml").read_text())
+    (schema_dir / "schema.yaml").write_text(OPENSPEC_SCHEMA_DIR.joinpath("schema.yaml").read_text())
     runner = CliRunner()
 
     # WHEN running init and selecting that schema
-    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "openspec", "--json"])
 
     # THEN config.yaml is created, pointing at the selected schema
     assert result.exit_code == 0
     config_path = isolated_cwd / "holospec" / "config.yaml"
     assert config_path.is_file()
-    assert config_path.read_text() == "schema: spec-driven\n"
+    assert config_path.read_text() == "schema: openspec\n"
 
 
 def test_given_init_already_run_when_init_run_again_then_symlink_is_recreated(isolated_cwd):
     # GIVEN a project where init has already installed the skill symlink
     runner = CliRunner()
-    runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
+    runner.invoke(main, ["init", "--schema", "openspec", "--json"])
 
     # WHEN running init again
-    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "openspec", "--json"])
 
     # THEN the symlink is replaced cleanly rather than erroring or nesting
     assert result.exit_code == 0
@@ -83,7 +83,7 @@ def test_given_real_dir_at_claude_skill_path_when_init_run_then_replaces_it_with
     runner = CliRunner()
 
     # WHEN running init
-    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "openspec", "--json"])
 
     # THEN the stale directory is replaced with a symlink to the canonical skill
     assert result.exit_code == 0
@@ -97,7 +97,7 @@ def test_given_no_existing_root_when_init_run_without_json_then_prints_text_summ
     runner = CliRunner()
 
     # WHEN running init without --json
-    result = runner.invoke(main, ["init", "--schema", "spec-driven"])
+    result = runner.invoke(main, ["init", "--schema", "openspec"])
 
     # THEN it prints a human-readable summary
     assert result.exit_code == 0
@@ -113,7 +113,7 @@ def test_given_existing_holospec_dir_when_init_run_without_json_then_prints_dete
     runner = CliRunner()
 
     # WHEN running init without --json
-    result = runner.invoke(main, ["init", "--schema", "spec-driven"])
+    result = runner.invoke(main, ["init", "--schema", "openspec"])
 
     # THEN it prints a human-readable summary noting detection, not scaffolding
     assert result.exit_code == 0
@@ -128,7 +128,7 @@ def test_given_existing_openspec_dir_when_init_run_then_detects_it_without_scaff
     runner = CliRunner()
 
     # WHEN running init
-    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "openspec", "--json"])
 
     # THEN it detects the existing openspec/ root and does not scaffold
     assert result.exit_code == 0
@@ -147,7 +147,7 @@ def test_given_existing_holospec_dir_when_init_run_then_detects_it_without_scaff
     runner = CliRunner()
 
     # WHEN running init
-    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "openspec", "--json"])
 
     # THEN it detects the existing holospec/ root and does not create a new one
     assert result.exit_code == 0
@@ -166,7 +166,7 @@ def test_given_unrelated_openspec_dir_in_ancestor_when_init_run_then_scaffolds_h
     runner = CliRunner()
 
     # WHEN running init from the nested, unrelated project directory
-    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "openspec", "--json"])
 
     # THEN it scaffolds a new root here rather than adopting the ancestor's
     assert result.exit_code == 0
@@ -184,7 +184,7 @@ def test_given_both_openspec_and_holospec_dirs_when_init_run_then_holospec_takes
     runner = CliRunner()
 
     # WHEN running init
-    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "openspec", "--json"])
 
     # THEN holospec/ is detected as the root, per documented precedence
     assert result.exit_code == 0
@@ -199,27 +199,27 @@ def test_given_no_existing_schema_when_init_run_then_fetches_default_schema_from
     runner = CliRunner()
 
     # WHEN running init with the default schema name
-    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "openspec", "--json"])
 
     # THEN it copies schema.yaml + templates/ from the registry's local path
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert payload["schema"] == "spec-driven"
+    assert payload["schema"] == "openspec"
     assert payload["schema_fetched"] is True
-    dest_dir = isolated_cwd / "holospec" / "schemas" / "spec-driven"
-    assert (dest_dir / "schema.yaml").read_text() == (SPEC_DRIVEN_SCHEMA_DIR / "schema.yaml").read_text()
+    dest_dir = isolated_cwd / "holospec" / "schemas" / "openspec"
+    assert (dest_dir / "schema.yaml").read_text() == (OPENSPEC_SCHEMA_DIR / "schema.yaml").read_text()
     assert (dest_dir / "templates" / "proposal.md").is_file()
 
 
 def test_given_existing_schema_when_init_run_then_fetch_is_skipped(isolated_cwd):
-    # GIVEN a schemas/spec-driven/schema.yaml already present under the root
-    dest_dir = isolated_cwd / "holospec" / "schemas" / "spec-driven"
+    # GIVEN a schemas/openspec/schema.yaml already present under the root
+    dest_dir = isolated_cwd / "holospec" / "schemas" / "openspec"
     dest_dir.mkdir(parents=True)
     (dest_dir / "schema.yaml").write_text("name: custom-existing\n")
     runner = CliRunner()
 
     # WHEN running init
-    result = runner.invoke(main, ["init", "--schema", "spec-driven", "--json"])
+    result = runner.invoke(main, ["init", "--schema", "openspec", "--json"])
 
     # THEN the existing schema is left untouched and not re-fetched
     assert result.exit_code == 0
@@ -337,7 +337,7 @@ def test_given_no_schema_flag_and_noninteractive_input_when_init_run_then_errors
     assert result.exit_code == 1
     payload = json.loads(result.output)
     assert payload["error"]["code"] == "schema_not_specified"
-    assert "spec-driven" in payload["error"]["message"]
+    assert "openspec" in payload["error"]["message"]
 
 
 def test_given_no_schema_flag_and_interactive_input_when_init_run_then_prompts_and_uses_selection(
@@ -354,7 +354,7 @@ def test_given_no_schema_flag_and_interactive_input_when_init_run_then_prompts_a
     assert result.exit_code == 0
     assert "Select a schema:" in result.output
     payload = json.loads(result.output[result.output.index("{") :])
-    assert payload["schema"] == "spec-driven"
+    assert payload["schema"] == "openspec"
 
 
 def test_given_local_project_schema_when_init_run_interactively_then_offered_first(isolated_cwd, monkeypatch):

@@ -58,7 +58,7 @@ def test_given_no_project_root_when_finding_project_root_then_returns_none(tmp_p
     nested.mkdir(parents=True)
 
     # WHEN finding the project root starting from the nested directory
-    root = find_project_root("spec-driven", start=nested)
+    root = find_project_root("openspec", start=nested)
 
     # THEN no root is found
     assert root is None
@@ -70,7 +70,7 @@ def test_given_no_project_root_when_resolving_schema_path_then_returns_none(tmp_
     nested.mkdir(parents=True)
 
     # WHEN resolving the schema path
-    path = resolve_schema_path("spec-driven", start=nested)
+    path = resolve_schema_path("openspec", start=nested)
 
     # THEN no path is resolved
     assert path is None
@@ -129,13 +129,13 @@ def test_given_schema_yml_extension_when_resolving_schema_file_then_finds_it(tmp
 def test_given_project_root_with_yml_extension_when_loading_schema_then_loads_it(tmp_path, monkeypatch):
     # GIVEN a project root whose schema is named schema.yml instead of schema.yaml
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "holospec" / "schemas" / "spec-driven").mkdir(parents=True)
-    (tmp_path / "holospec" / "schemas" / "spec-driven" / "schema.yml").write_text("propose:\n  requires: []\n")
+    (tmp_path / "holospec" / "schemas" / "openspec").mkdir(parents=True)
+    (tmp_path / "holospec" / "schemas" / "openspec" / "schema.yml").write_text("propose:\n  requires: []\n")
 
     # WHEN loading the schema by name
 
     # THEN it is found and loaded despite the .yml extension
-    schema = load_schema("spec-driven")
+    schema = load_schema("openspec")
     assert schema == {"propose": {"requires": []}}
 
 
