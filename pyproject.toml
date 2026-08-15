@@ -5,8 +5,39 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "holospec"
 version = "0.1.0"
-description = "An instruction layer for spec-driven workflows"
+description = "The instruction layer for agentic work."
+readme = "README.md"
 requires-python = ">=3.11"
+authors = [
+    { name = "Adam Kirchberger", email = "adam.kirchberger@nomios.co.uk" },
+]
+keywords = [
+    "ai",
+    "llm",
+    "agents",
+    "agentic",
+    "claude",
+    "claude-code",
+    "skills",
+    "spec-driven-development",
+    "sdd",
+    "openspec",
+    "spec-kit",
+    "specification",
+]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Documentation",
+]
 dependencies = [
     "click>=8.0",
     "pydantic>=2.0",
