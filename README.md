@@ -1,7 +1,7 @@
 # HoloSpec
 
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nomios-opensource/holospec/test.yaml)
-[![codecov](https://codecov.io/github/nomios-opensource/holospec/graph/badge.svg?token=EY5ADP9UP6)](https://codecov.io/github/nomios-opensource/holospec)
+[![codecov](https://codecov.io/github/nomios-opensource/holospec/branch/develop/graph/badge.svg?token=JjHP3I2qiS)](https://codecov.io/github/nomios-opensource/holospec)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/holospec)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/holospec)
 ![GitHub License](https://img.shields.io/github/license/nomios-opensource/holospec)
