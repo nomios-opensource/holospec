@@ -26,7 +26,7 @@ Most tools define the process. HoloSpec makes the process discoverable. Workflow
 - **Beyond software development**: Support software delivery, design, planning, estimation, operations or any other process of your own.
 - **Shared context and conventions**: Define standards, rules, context, and behaviours once and make them available across every workflow and action.
 - **Built for agents**: Instructions are retrieved dynamically at runtime rather than embedded in prompts, skills, code, or agent implementations.
-- **Adapt without changing your tooling**: Ipdate the schema as your ways of working evolve and the instructions evolve with it.
+- **Adapt without changing your tooling**: Update the schema as your ways of working evolve and the instructions evolve with it.
 
 ## Installation
 
