@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.1](https://github.com/nomios-opensource/holospec/compare/v0.1.0...v0.1.1) (2026-08-15)
+
+
+### Bug Fixes
+
+* fix package settings and versioning ([0fb45c6](https://github.com/nomios-opensource/holospec/commit/0fb45c679df317c7271eb7d750e7a70423ef9862))
+
+
+### Documentation
+
+* update readme codecov ([c4ef7bb](https://github.com/nomios-opensource/holospec/commit/c4ef7bbb8343aa1333eea09e0cab8778e65520f1))
+
 ## 0.1.0 (2026-08-14)
 
 
