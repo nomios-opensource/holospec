@@ -42,9 +42,8 @@ scaffolding a new root."""
 DEFAULT_SCHEMA = "openspec"
 """Schema used when a project doesn't pin one explicitly."""
 
-SCHEMA_REGISTRY: dict[str, str] = {
-    "openspec": str(files("holospec_assets").joinpath("schemas", "openspec")),
-}
+_SCHEMAS_DIR = files("holospec_assets").joinpath("schemas")
+SCHEMA_REGISTRY: dict[str, str] = {d.name: str(d) for d in sorted(_SCHEMAS_DIR.iterdir(), key=str)}
 """Catalog of holospec project maintained schemas."""
 
 

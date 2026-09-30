@@ -1,4 +1,23 @@
-from holospec import validate_schema
+from pathlib import Path
+
+import pytest
+
+from holospec import load_schema_file, validate_schema
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+SCHEMA_FILES = sorted(REPO_ROOT.glob("schemas/*/schema.yaml"))
+
+
+@pytest.mark.parametrize("schema_path", SCHEMA_FILES, ids=lambda p: p.parent.name)
+def test_given_a_real_shipped_schema_when_validated_then_no_errors(schema_path):
+    # GIVEN a real shipped schema.yaml under schemas/<name>/
+    schema = load_schema_file(schema_path)
+
+    # WHEN validating it
+    errors = validate_schema(schema)
+
+    # THEN there are no errors
+    assert errors == []
 
 
 def test_given_minimal_valid_schema_when_validated_then_no_errors():
