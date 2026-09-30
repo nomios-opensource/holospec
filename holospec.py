@@ -275,10 +275,8 @@ def _stdin_isatty() -> bool:
 
 def _discover_local_schemas(root: t.Optional[Path]) -> list[str]:
     """List schema names already present under root/schemas/ (has a schema.yaml or .yml)."""
-    if root is None:
-        return []
-    schemas_dir = root / "schemas"
-    if not schemas_dir.is_dir():
+    schemas_dir = root / "schemas" if root else None
+    if schemas_dir is None or not schemas_dir.is_dir():
         return []
     return sorted(
         p.name
@@ -289,11 +287,7 @@ def _discover_local_schemas(root: t.Optional[Path]) -> list[str]:
 
 def _schema_choices(root: t.Optional[Path]) -> list[str]:
     """Local project schemas (offered first) plus the built-in registry, deduplicated."""
-    choices: list[str] = []
-    for name in [*_discover_local_schemas(root), *SCHEMA_REGISTRY]:
-        if name not in choices:
-            choices.append(name)
-    return choices
+    return list(dict.fromkeys([*_discover_local_schemas(root), *SCHEMA_REGISTRY]))
 
 
 def _prompt_schema_choice(root: t.Optional[Path]) -> str:
@@ -323,20 +317,15 @@ def init(schema_name: t.Optional[str], schema_url: t.Optional[str], as_json: boo
         if _stdin_isatty():
             schema_name = _prompt_schema_choice(root)
         else:
-            choices = _schema_choices(root)
-            _emit_error(
-                HoloSpecError(
-                    "schema_not_specified",
-                    "No --schema given and input is non-interactive; pass --schema explicitly. "
-                    f"Available schemas: {', '.join(choices)}",
-                ),
-                as_json,
+            avail = ", ".join(_schema_choices(root))
+            msg = (
+                f"No --schema given and input is non-interactive; pass --schema explicitly. Available schemas: {avail}"
             )
+            _emit_error(HoloSpecError("schema_not_specified", msg), as_json)
 
     if root is None:
         root = Path.cwd() / PROJECT_ROOT_MARKERS[0]
-        root.mkdir(parents=True, exist_ok=True)
-        (root / "schemas").mkdir(exist_ok=True)
+        (root / "schemas").mkdir(parents=True, exist_ok=True)
         created = True
 
     config_path = root / "config.yaml"
@@ -350,13 +339,8 @@ def init(schema_name: t.Optional[str], schema_url: t.Optional[str], as_json: boo
     if not (dest_dir / "schema.yaml").is_file() and not (dest_dir / "schema.yml").is_file():
         location = schema_url or SCHEMA_REGISTRY.get(schema_name)
         if location is None:
-            _emit_error(
-                HoloSpecError(
-                    "schema_not_found",
-                    f"No known source for schema '{schema_name}'; pass --schema-url",
-                ),
-                as_json,
-            )
+            err = HoloSpecError("schema_not_found", f"No known source for schema '{schema_name}'; pass --schema-url")
+            _emit_error(err, as_json)
         try:
             fetch_schema(schema_name, location, dest_dir)
         except HoloSpecError as exc:
@@ -374,10 +358,8 @@ def init(schema_name: t.Optional[str], schema_url: t.Optional[str], as_json: boo
     if as_json:
         click.echo(json.dumps(result, indent=4))
     else:
-        action_word = "Scaffolded" if created else "Detected existing"
-        click.echo(f"{action_word} root: {root}")
-        schema_word = "Fetched" if schema_fetched else "Using existing"
-        click.echo(f"{schema_word} schema: {schema_name}")
+        click.echo(f"{'Scaffolded' if created else 'Detected existing'} root: {root}")
+        click.echo(f"{'Fetched' if schema_fetched else 'Using existing'} schema: {schema_name}")
         for path in skill_paths:
             click.echo(f"Installed skill file: {path}")
 
@@ -396,11 +378,10 @@ def _install_skill(cwd: Path) -> list[str]:
     claude_skills_dir = cwd / ".claude" / "skills"
     claude_skills_dir.mkdir(parents=True, exist_ok=True)
     link_path = claude_skills_dir / "holospec"
-    if link_path.is_symlink() or link_path.exists():
-        if link_path.is_symlink():
-            link_path.unlink()
-        else:
-            shutil.rmtree(link_path)
+    if link_path.is_symlink():
+        link_path.unlink()
+    elif link_path.exists():
+        shutil.rmtree(link_path)
     link_path.symlink_to(os.path.relpath(agents_skill_dir, claude_skills_dir), target_is_directory=True)
 
     return [str(agents_skill_dir / "SKILL.md"), str(link_path / "SKILL.md")]
@@ -850,9 +831,7 @@ def resolve_artifact_root(artifact: dict[str, t.Any], default_root: t.Optional[P
 def resolve_schema_path(name: str, start: t.Optional[Path] = None) -> t.Optional[Path]:
     """Project-local resolution: qualifying project root directly under start (or cwd)."""
     root = find_project_root(name, start)
-    if root is not None:
-        return resolve_schema_file(root / "schemas" / name)
-    return None
+    return resolve_schema_file(root / "schemas" / name) if root is not None else None
 
 
 def load_schema(name: str, start: t.Optional[Path] = None) -> dict[str, t.Any]:
@@ -874,11 +853,7 @@ def load_config(root: t.Optional[Path]) -> dict[str, t.Any]:
     """Load <root>/config.yaml (or config.yml) if present. Returns {} if root or the file is absent."""
     if root is None:
         return {}
-    config_path = None
-    for candidate in (root / "config.yaml", root / "config.yml"):
-        if candidate.is_file():
-            config_path = candidate
-            break
+    config_path = next((c for c in (root / "config.yaml", root / "config.yml") if c.is_file()), None)
     if config_path is None:
         return {}
     with open(config_path, "r") as f:
@@ -993,10 +968,7 @@ def lookup_action(
         artifacts = schema.get("artifacts", [])
         artifact_map = {a["id"]: a for a in artifacts if isinstance(a, dict) and "id" in a}
         referenced = result.get("artifacts", [])
-        resolved_artifacts = []
-        for aid in referenced:
-            if aid in artifact_map:
-                resolved_artifacts.append(artifact_map[aid])
+        resolved_artifacts = [artifact_map[aid] for aid in referenced if aid in artifact_map]
         if resolved_artifacts:
             result["_artifacts_detail"] = resolved_artifacts
 
