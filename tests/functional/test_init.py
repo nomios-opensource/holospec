@@ -1,5 +1,6 @@
 import io
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -398,3 +399,101 @@ class _FakeResponse:
 
     def __exit__(self, *exc_info):
         return False
+
+
+def _git(repo: Path, *args: str) -> None:
+    ident = ["-c", "user.name=t", "-c", "user.email=t@t"]
+    subprocess.run(["git", *ident, "-C", str(repo), *args], check=True)  # noqa: S603, S607
+
+
+def _commit_all(repo: Path) -> None:
+    """Turn `repo` into a git repository with everything committed."""
+    for args in (["init", "-q"], ["add", "."], ["commit", "-qm", "init"]):
+        _git(repo, *args)
+
+
+def test_given_schema_url_git_repo_when_init_run_then_clones_and_copies_schemas_subdir(isolated_cwd, tmp_path):
+    # GIVEN a git repo laid out as holospec-schemas/schemas/<name>/
+    repo = tmp_path / "holospec-schemas.git"
+    schema_dir = repo / "schemas" / "custom"
+    (schema_dir / "templates").mkdir(parents=True)
+    (schema_dir / "schema.yaml").write_text("name: custom\nartifacts: []\n")
+    (schema_dir / "templates" / "custom.md").write_text("template body")
+    _commit_all(repo)
+    runner = CliRunner()
+
+    # WHEN running init with the repo as --schema-url (.git suffix marks it as git)
+    result = runner.invoke(main, ["init", "--schema", "custom", "--schema-url", f"file://{repo}", "--json"])
+
+    # THEN schemas/custom is copied out of the clone
+    assert result.exit_code == 0, result.output
+    dest_dir = isolated_cwd / "holospec" / "schemas" / "custom"
+    assert (dest_dir / "schema.yaml").read_text() == "name: custom\nartifacts: []\n"
+    assert (dest_dir / "templates" / "custom.md").read_text() == "template body"
+
+
+def test_given_schema_url_git_repo_without_schema_when_init_run_then_reports_schema_fetch_failed(
+    isolated_cwd, tmp_path
+):
+    # GIVEN a git repo containing no schema.yaml
+    repo = tmp_path / "empty.git"
+    repo.mkdir()
+    (repo / "README.md").write_text("x")
+    _commit_all(repo)
+
+    # WHEN running init against it
+    result = CliRunner().invoke(main, ["init", "--schema", "custom", "--schema-url", f"file://{repo}", "--json"])
+
+    # THEN a schema_fetch_failed error is reported
+    assert result.exit_code == 1
+    assert json.loads(result.output)["error"]["code"] == "schema_fetch_failed"
+
+
+def test_given_unreachable_git_url_when_init_run_then_reports_schema_fetch_failed(isolated_cwd, tmp_path):
+    # GIVEN a git URL that does not exist
+    missing = tmp_path / "missing.git"
+
+    # WHEN running init against it
+    result = CliRunner().invoke(main, ["init", "--schema", "custom", "--schema-url", f"file://{missing}", "--json"])
+
+    # THEN the clone failure is surfaced, not an unhandled crash
+    assert result.exit_code == 1
+    assert json.loads(result.output)["error"]["code"] == "schema_fetch_failed"
+
+
+def test_given_git_not_installed_when_init_run_then_reports_schema_fetch_failed(isolated_cwd, monkeypatch):
+    # GIVEN git is not on PATH
+    def no_git(*args, **kwargs):
+        raise FileNotFoundError("git")
+
+    monkeypatch.setattr(holospec.subprocess, "run", no_git)
+
+    # WHEN running init with a git --schema-url
+    result = CliRunner().invoke(
+        main, ["init", "--schema", "custom", "--schema-url", "git@example.invalid:org/schemas.git", "--json"]
+    )
+
+    # THEN the missing dependency is reported clearly
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["error"]["code"] == "schema_fetch_failed"
+    assert "git is not installed" in payload["error"]["message"]
+
+
+def test_given_schema_url_git_repo_with_ref_when_init_run_then_copies_that_tag(isolated_cwd, tmp_path):
+    # GIVEN a git repo whose tag v1 differs from HEAD
+    repo = tmp_path / "holospec-schemas.git"
+    (repo / "templates").mkdir(parents=True)
+    (repo / "templates" / "t.md").write_text("t")
+    (repo / "schema.yaml").write_text("name: v1\n")
+    _commit_all(repo)
+    _git(repo, "tag", "v1")
+    (repo / "schema.yaml").write_text("name: head\n")
+    _git(repo, "commit", "-qam", "2")
+
+    # WHEN running init with a #v1 ref (schema.yaml at the repo root)
+    result = CliRunner().invoke(main, ["init", "--schema", "custom", "--schema-url", f"file://{repo}#v1", "--json"])
+
+    # THEN the tagged content is copied, not HEAD
+    assert result.exit_code == 0, result.output
+    assert (isolated_cwd / "holospec" / "schemas" / "custom" / "schema.yaml").read_text() == "name: v1\n"

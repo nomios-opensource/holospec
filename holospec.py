@@ -17,7 +17,9 @@ limitations under the License.
 import json
 import os
 import shutil
+import subprocess
 import sys
+import tempfile
 import typing as t
 import urllib.request
 from importlib.resources import files
@@ -310,7 +312,7 @@ def _prompt_schema_choice(root: t.Optional[Path]) -> str:
 
 @main.command()
 @click.option("--schema", "schema_name", default=None, help="Schema name to fetch (skips the interactive prompt)")
-@click.option("--schema-url", "schema_url", default=None, help="Override schema source (path or URL)")
+@click.option("--schema-url", "schema_url", default=None, help="Schema source: path, URL, or git repo[#ref]")
 @click.option("--json", "as_json", is_flag=True, help="JSON output")
 def init(schema_name: t.Optional[str], schema_url: t.Optional[str], as_json: bool) -> None:
     """Initialize a new project or detect an existing one."""
@@ -412,8 +414,36 @@ def _fetch_url(url: str, dest: Path) -> None:
         raise HoloSpecError("schema_fetch_failed", f"Failed to fetch {url}: {exc}") from exc
 
 
+def _is_git_location(location: str) -> bool:
+    """Whether a --schema-url points at a git repo (scp-style, ssh://, git://, or *.git)."""
+    base = location.partition("#")[0]
+    return base.startswith(("git@", "ssh://", "git://")) or base.endswith(".git")
+
+
+def _fetch_git_schema(name: str, location: str, dest_dir: Path) -> None:
+    """Shallow-clone a git repo and copy schemas/<name> (or the repo root) from it."""
+    url, _, ref = location.partition("#")  # optional #<branch-or-tag> pin
+    with tempfile.TemporaryDirectory(prefix="holospec-schema-") as tmp:
+        try:
+            # Plain `git clone` so the caller's own ssh agent/git config handles auth
+            cmd = ["git", "clone", "--depth", "1", *(["--branch", ref] if ref else []), url, tmp]
+            subprocess.run(cmd, check=True, capture_output=True, text=True)  # noqa: S603
+        except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+            detail = exc.stderr.strip() if isinstance(exc, subprocess.CalledProcessError) else "git is not installed"
+            raise HoloSpecError("schema_fetch_failed", f"Failed to clone {url}: {detail or exc}") from exc
+        candidates = (Path(tmp) / "schemas" / name, Path(tmp))
+        source = next((c for c in candidates if (c / "schema.yaml").is_file()), None)
+        if source is None:
+            raise HoloSpecError("schema_fetch_failed", f"No schemas/{name}/schema.yaml or schema.yaml found in {url}")
+        fetch_schema(name, str(source), dest_dir)
+
+
 def fetch_schema(name: str, base_location: str, dest_dir: Path) -> None:
-    """Populate dest_dir with schema.yaml + templates/ from a local path or URL."""
+    """Populate dest_dir with schema.yaml + templates/ from a local path, git repo, or URL."""
+    if _is_git_location(base_location):
+        _fetch_git_schema(name, base_location, dest_dir)
+        return
+
     source = Path(base_location)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
