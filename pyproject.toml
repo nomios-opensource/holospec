@@ -55,7 +55,7 @@ packages = ["holospec_assets"]
 holospec_assets = "assets"
 
 [tool.setuptools.package-data]
-holospec_assets = ["*.md", "schemas/**/*.yaml", "schemas/**/*.md"]
+holospec_assets = ["*.md", "schemas/**/*"]
 
 [dependency-groups]
 dev = [

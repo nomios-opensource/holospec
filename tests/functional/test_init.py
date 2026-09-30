@@ -497,3 +497,43 @@ def test_given_schema_url_git_repo_with_ref_when_init_run_then_copies_that_tag(i
     # THEN the tagged content is copied, not HEAD
     assert result.exit_code == 0, result.output
     assert (isolated_cwd / "holospec" / "schemas" / "custom" / "schema.yaml").read_text() == "name: v1\n"
+
+
+def test_given_schema_dir_with_extra_files_and_no_templates_when_init_run_then_copies_everything(
+    isolated_cwd, tmp_path
+):
+    # GIVEN a schema dir with a scripts/ folder and no templates/
+    source = tmp_path / "custom-schema"
+    (source / "scripts").mkdir(parents=True)
+    (source / "schema.yaml").write_text("name: custom\nartifacts: []\n")
+    (source / "scripts" / "x.sh").write_text("echo x")
+
+    # WHEN running init against it
+    result = CliRunner().invoke(main, ["init", "--schema", "custom", "--schema-url", str(source), "--json"])
+
+    # THEN everything is copied and the missing templates/ is not an error
+    assert result.exit_code == 0, result.output
+    dest_dir = isolated_cwd / "holospec" / "schemas" / "custom"
+    assert (dest_dir / "scripts" / "x.sh").read_text() == "echo x"
+    assert not (dest_dir / "templates").exists()
+
+
+def test_given_copy_fails_when_init_run_with_local_schema_then_reports_schema_fetch_failed(
+    isolated_cwd, tmp_path, monkeypatch
+):
+    # GIVEN a valid schema dir but a copy that fails
+    source = tmp_path / "custom-schema"
+    source.mkdir()
+    (source / "schema.yaml").write_text("name: custom\n")
+
+    def boom(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(holospec.shutil, "copytree", boom)
+
+    # WHEN running init against it
+    result = CliRunner().invoke(main, ["init", "--schema", "custom", "--schema-url", str(source), "--json"])
+
+    # THEN the failure is surfaced as schema_fetch_failed
+    assert result.exit_code == 1
+    assert json.loads(result.output)["error"]["code"] == "schema_fetch_failed"

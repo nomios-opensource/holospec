@@ -439,7 +439,7 @@ def _fetch_git_schema(name: str, location: str, dest_dir: Path) -> None:
 
 
 def fetch_schema(name: str, base_location: str, dest_dir: Path) -> None:
-    """Populate dest_dir with schema.yaml + templates/ from a local path, git repo, or URL."""
+    """Populate dest_dir with a schema dir copied from a local path or git repo, or fetched from a URL."""
     if _is_git_location(base_location):
         _fetch_git_schema(name, base_location, dest_dir)
         return
@@ -448,9 +448,11 @@ def fetch_schema(name: str, base_location: str, dest_dir: Path) -> None:
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     if source.is_dir():
+        if not (source / "schema.yaml").is_file():
+            raise HoloSpecError("schema_fetch_failed", f"No schema.yaml found in {source}")
         try:
-            shutil.copy2(source / "schema.yaml", dest_dir / "schema.yaml")
-            shutil.copytree(source / "templates", dest_dir / "templates", dirs_exist_ok=True)
+            # Copy the whole schema dir (templates/, scripts/, ...); .git comes along for repo-root schemas
+            shutil.copytree(source, dest_dir, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".git"))
         except OSError as exc:
             raise HoloSpecError("schema_fetch_failed", f"Failed to copy schema '{name}' from {source}: {exc}") from exc
         return
