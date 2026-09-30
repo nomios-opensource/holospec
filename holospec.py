@@ -31,7 +31,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from pydantic_core import ErrorDetails, InitErrorDetails, PydanticCustomError
 
-__version__ = "0.1.1"  # x-release-please-version
+__version__ = "0.2.0"  # x-release-please-version
 
 RESERVED_KEYS = {"name", "version", "description", "artifacts", "context", "constitution", "actions"}
 """Top-level config keys owned by HoloSpec; a schema may not redefine them."""

@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0](https://github.com/nomios-opensource/holospec/compare/v0.1.1...v0.2.0) (2026-09-30)
+
+
+### Features
+
+* copy whole schema dir on init ([f44218a](https://github.com/nomios-opensource/holospec/commit/f44218aa012c752b14bdb0c2dee08983ff907503))
+* discover built-in schemas from the schemas dir ([0d45d42](https://github.com/nomios-opensource/holospec/commit/0d45d427629d2e5f6ddf6356013c006fe26de585))
+* support git repos as schema sources ([ef169eb](https://github.com/nomios-opensource/holospec/commit/ef169ebf47a9e419ed0b9a5e0fcea3d7199fe16b))
+
+
+### Documentation
+
+* document schema sources and git refs ([e287cfb](https://github.com/nomios-opensource/holospec/commit/e287cfb0f7992b1ebec7cab6a32aee77a6c1554d))
+* fix typo ([b4de164](https://github.com/nomios-opensource/holospec/commit/b4de1645aa2b0392ee14f5f4310142da4bf93cf1))
+
 ## [0.1.1](https://github.com/nomios-opensource/holospec/compare/v0.1.0...v0.1.1) (2026-08-15)
 
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "holospec"
-version = "0.1.1"
+version = "0.2.0"
 description = "The instruction layer for agentic work."
 readme = "README.md"
 requires-python = ">=3.11"
