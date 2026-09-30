@@ -66,6 +66,31 @@ explain`, then `holospec init`) before guessing at the protocol yourself.
 
 Rather than hand-editing these files, ask your agent to run `holospec explain` — it's self-describing and will walk the agent through the available configuration and how to set it.
 
+### Schemas
+
+**Internal schemas** ship inside the package; `openspec` is the default.
+
+```bash
+holospec init --schema openspec
+```
+
+**Your own schemas** can come from `--schema-url`: a local directory, an HTTP(S) base URL, or a git repo. Git repos are cloned shallowly with your own git and SSH config, so private repos work with your existing keys. `git` must be on your `PATH`.
+
+```bash
+holospec init --schema team --schema-url git@github.com:acme/holospec-schemas.git
+# ssh:// is equivalent; use it when you need a non-default port
+holospec init --schema team --schema-url ssh://git@github.com:2222/acme/holospec-schemas.git
+```
+
+Pin a branch or tag with a `#ref` suffix (commit SHAs are not supported):
+
+```bash
+holospec init --schema team --schema-url git@github.com:acme/holospec-schemas.git#main
+holospec init --schema team --schema-url git@github.com:acme/holospec-schemas.git#v1.2.0
+```
+
+The repo (or local directory) must contain `schemas/<name>/schema.yaml`, or `schema.yaml` at its root. The whole schema directory is copied (`templates/`, `scripts/`, anything else); `templates/` is optional. HTTP(S) sources are limited to `schema.yaml` and the templates it references.
+
 ## Versioning
 
 Releases will follow semantic versioning (major.minor.patch). Before 1.0.0 breaking changes can be included in a minor release, therefore we highly recommend pinning this package.
